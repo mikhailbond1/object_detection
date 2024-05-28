@@ -1,18 +1,19 @@
-from flask import Flask, request, redirect, render_template
-from werkzeug.utils import secure_filename
+from flask import Flask, request, render_template
 from transformers import DetrImageProcessor, DetrForObjectDetection
 import torch
 from PIL import Image
-import io
+import gc  # Import garbage collector interface
 
 app = Flask(__name__)
 
-# Setup the DETR model and processor
-processor = DetrImageProcessor.from_pretrained("facebook/detr-resnet-50", revision="no_timm")
-model = DetrForObjectDetection.from_pretrained("facebook/detr-resnet-50", revision="no_timm")
-
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'png', 'jpg', 'jpeg'}
+
+def load_model():
+    # Load the model and processor dynamically
+    processor = DetrImageProcessor.from_pretrained("facebook/detr-resnet-50", revision="no_timm")
+    model = DetrForObjectDetection.from_pretrained("facebook/detr-resnet-50", revision="no_timm")
+    return processor, model
 
 @app.route('/', methods=['GET', 'POST'])
 def upload_image():
@@ -26,6 +27,8 @@ def upload_image():
     return render_template('index.html')
 
 def process_image(image):
+    processor, model = load_model()  # Load the model and processor for each request
+
     inputs = processor(images=image, return_tensors="pt")
     outputs = model(**inputs)
 
@@ -39,7 +42,14 @@ def process_image(image):
             f"Detected {model.config.id2label[label.item()]} with confidence "
             f"{round(score.item(), 3)} at location {box}"
         )
+
+    # Clean up by deleting model and processor and calling garbage collection
+    del model
+    del processor
+    gc.collect()
+
     return "<br>".join(detection_results)
 
 if __name__ == '__main__':
     app.run(debug=True)
+
