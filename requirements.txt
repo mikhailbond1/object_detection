@@ -5,6 +5,7 @@ click==8.1.7
 filelock==3.14.0
 Flask==3.0.3
 fsspec==2024.5.0
+gunicorn==22.0.0
 huggingface-hub==0.23.2
 idna==3.7
 itsdangerous==2.2.0
